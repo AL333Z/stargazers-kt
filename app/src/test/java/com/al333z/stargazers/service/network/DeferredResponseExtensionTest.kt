@@ -6,7 +6,8 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType
 import okhttp3.ResponseBody
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Test
 import retrofit2.Response
 
