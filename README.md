@@ -7,3 +7,6 @@ Sample application for [Stargazers GitHub api](https://developer.github.com/v3/a
 - build: `./gradlew app:assembleDebug`
 - run unit tests: `./gradlew app:testDebugUnitTest`
 
+## TODO
+- handle pagination
+- improve UI for errors
