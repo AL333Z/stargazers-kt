@@ -14,14 +14,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 import com.al333z.stargazers.R
 import com.al333z.stargazers.StargazersApp
-import com.al333z.stargazers.service.Stargazer
-import com.al333z.stargazers.service.network.ResourceStatus
+import com.al333z.stargazers.service.NetworkState
 import com.al333z.stargazers.ui.item.StargazersItemAdapter
 import kotlinx.android.synthetic.main.stargazers_fragment.*
 import javax.inject.Inject
 
 class StargazersFragment : Fragment() {
-
     @Inject
     lateinit var viewModelFactory: ViewModelProvider.Factory
 
@@ -39,15 +37,17 @@ class StargazersFragment : Fragment() {
 
         val adapter = StargazersItemAdapter()
 
+        val viewModel = ViewModelProviders.of(this, viewModelFactory).get(StargazersViewModel::class.java)
+
+        viewModel.stargazers.observe(this, Observer { adapter.submitList(it) })
+        viewModel.networkState.observe(this, Observer { handleStatus(it) })
+
         recycler_view.hasFixedSize()
         recycler_view.adapter = adapter
 
-        val viewModel = ViewModelProviders.of(this, viewModelFactory).get(StargazersViewModel::class.java)
-        viewModel.stargazers.observe(this, Observer { handleStatus(it, adapter) })
-
         search_button.setOnClickListener {
             hideKeyboard()
-            viewModel.getStargazers(owner_text.text.toString(), repo_text.text.toString())
+            viewModel.search(owner_text.text.toString(), repo_text.text.toString())
         }
     }
 
@@ -55,22 +55,18 @@ class StargazersFragment : Fragment() {
         return inflater.inflate(R.layout.stargazers_fragment, container, false)
     }
 
-    private fun handleStatus(status: ResourceStatus<List<Stargazer>>, adapter: StargazersItemAdapter) {
-        when (status) {
-            is ResourceStatus.Success -> {
+    private fun handleStatus(state: NetworkState) {
+        when (state) {
+            is NetworkState.Loaded -> {
                 progress_bar.visibility = GONE
-                adapter.addItems(status.data)
             }
-            is ResourceStatus.Error -> {
-                progress_bar.visibility = GONE
-                status.t.printStackTrace()
-                Toast.makeText(context, status.msg, Toast.LENGTH_SHORT).show()
-            }
-            ResourceStatus.Loading -> {
+            is NetworkState.Loading -> {
                 progress_bar.visibility = VISIBLE
-                adapter.reset()
+            }
+            is NetworkState.Failed -> {
+                progress_bar.visibility = GONE
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
             }
         }
     }
-
 }

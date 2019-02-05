@@ -4,12 +4,12 @@ import com.al333z.stargazers.service.GitHubService
 import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
 import dagger.Module
 import dagger.Provides
+import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.jackson.JacksonConverterFactory
 import javax.inject.Singleton
-
 
 @Module
 internal class ServiceModule {
@@ -17,17 +17,18 @@ internal class ServiceModule {
     @Provides
     @Singleton
     fun createRetrofit(): Retrofit {
-        val interceptor = HttpLoggingInterceptor()
-        interceptor.level = HttpLoggingInterceptor.Level.BODY
+        val logging = HttpLoggingInterceptor()
+        logging.level = HttpLoggingInterceptor.Level.BODY
 
-        val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .build()
 
         return Retrofit.Builder()
             .baseUrl("https://api.github.com/")
             .client(client)
             .addConverterFactory(JacksonConverterFactory.create())
             .addCallAdapterFactory(CoroutineCallAdapterFactory())
-            .client(OkHttpClient.Builder().build())
             .build()
     }
 

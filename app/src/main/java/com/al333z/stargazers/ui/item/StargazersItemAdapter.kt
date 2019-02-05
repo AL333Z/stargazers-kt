@@ -2,15 +2,24 @@ package com.al333z.stargazers.ui.item
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.recyclerview.widget.RecyclerView
+import androidx.paging.PagedListAdapter
+import androidx.recyclerview.widget.DiffUtil
 import com.al333z.stargazers.R
 import com.al333z.stargazers.service.Stargazer
 
-class StargazersItemAdapter(private var data: MutableList<Stargazer> = mutableListOf()) :
-    RecyclerView.Adapter<ViewHolder>() {
+class StargazersItemAdapter : PagedListAdapter<Stargazer, ViewHolder>(StargazersItemAdapter.DiffCallback) {
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(data[position])
+    companion object {
+        // TODO looks ridiculous.. but it's what it's
+        val DiffCallback: DiffUtil.ItemCallback<Stargazer> = object : DiffUtil.ItemCallback<Stargazer>() {
+            override fun areItemsTheSame(oldItem: Stargazer, newItem: Stargazer): Boolean {
+                return oldItem == newItem
+            }
+
+            override fun areContentsTheSame(oldItem: Stargazer, newItem: Stargazer): Boolean {
+                return oldItem == newItem
+            }
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -19,16 +28,8 @@ class StargazersItemAdapter(private var data: MutableList<Stargazer> = mutableLi
         return ViewHolder(view)
     }
 
-    override fun getItemCount() = data.size
-
-    fun addItems(items: List<Stargazer>) {
-        data.clear()
-        data.addAll(items)
-        this.notifyDataSetChanged()
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        holder.bind(getItem(position))
     }
 
-    fun reset() {
-        data.clear()
-        this.notifyDataSetChanged()
-    }
 }

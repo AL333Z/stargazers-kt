@@ -1,27 +1,31 @@
 package com.al333z.stargazers.ui
 
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import com.al333z.stargazers.extension.scoped
+import androidx.lifecycle.Transformations
+import androidx.paging.LivePagedListBuilder
+import androidx.paging.PagedList
 import com.al333z.stargazers.service.GitHubService
+import com.al333z.stargazers.service.NetworkState
 import com.al333z.stargazers.service.Stargazer
-import com.al333z.stargazers.service.network.ResourceStatus
+import com.al333z.stargazers.ui.datasource.StargazersPagedDataSourceFactory
 import javax.inject.Inject
-import kotlin.coroutines.CoroutineContext
 
-class StargazersViewModel @Inject constructor(
-    private val gitHubService: GitHubService,
-    private val coroutineContext: CoroutineContext
-) : ScopedViewModel() {
+class StargazersViewModel @Inject constructor(gitHubService: GitHubService) : ScopedViewModel() {
 
-    private val _stargazers = MutableLiveData<ResourceStatus<List<Stargazer>>>()
+    private val pagedListConfig = PagedList.Config.Builder()
+        .setPageSize(2)
+        .setEnablePlaceholders(false)
+        .build()
 
-    val stargazers: LiveData<ResourceStatus<List<Stargazer>>>
-        get () = _stargazers
+    private val dataSourceFactory = StargazersPagedDataSourceFactory(scope, gitHubService)
 
-    fun getStargazers(owner: String, repo: String) {
-        gitHubService.getStargazersAsync(owner, repo)
-            .scoped(scope, coroutineContext)
-            .toLiveData(_stargazers)
+    val networkState: LiveData<NetworkState> =
+        Transformations.switchMap(dataSourceFactory.dataSources) { it.networkState }
+
+    val stargazers: LiveData<PagedList<Stargazer>> =
+        LivePagedListBuilder<String, Stargazer>(dataSourceFactory, pagedListConfig).build()
+
+    fun search(owner: String, repo: String) {
+        dataSourceFactory.createFor(owner, repo)
     }
 }
