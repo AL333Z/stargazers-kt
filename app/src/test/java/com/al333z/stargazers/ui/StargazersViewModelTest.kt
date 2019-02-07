@@ -2,15 +2,22 @@ package com.al333z.stargazers.ui
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
+import androidx.paging.PagedList
 import com.al333z.stargazers.service.GitHubService
+import com.al333z.stargazers.service.NetworkState
 import com.al333z.stargazers.service.Stargazer
-import com.al333z.stargazers.service.network.ResourceStatus
 import com.nhaarman.mockitokotlin2.*
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers.Unconfined
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.newSingleThreadContext
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import okhttp3.Headers
 import okhttp3.MediaType
 import okhttp3.ResponseBody
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import retrofit2.Response
@@ -22,45 +29,80 @@ class StargazersViewModelTest {
     @JvmField
     val instantTaskExecutorRule = InstantTaskExecutorRule()
 
+    private val mainThreadSurrogate = newSingleThreadContext("UI thread")
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(mainThreadSurrogate)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain() // reset main dispatcher to the original Main dispatcher
+        mainThreadSurrogate.close()
+    }
+
     private val service: GitHubService = mock()
 
-    private val sut = StargazersViewModel(service, Unconfined)
+    private val sut = StargazersViewModel(service)
 
     private val results = listOf(
-        Stargazer("", "Jane"),
-        Stargazer("", "John")
+        Stargazer("http://jane.url", "Jane"),
+        Stargazer("http://john.url", "John")
     )
 
-    private val observer: Observer<ResourceStatus<List<Stargazer>>> = mock()
+    private val networkStateObserver: Observer<NetworkState> = mock()
+    private val stargazersObserver: Observer<PagedList<Stargazer>> = mock()
 
     @Test
     fun happyPath() {
-        whenever(service.getStargazersAsync(any(), any()))
-            .doReturn(CompletableDeferred(Response.success(results)))
+        val owner = "al333z"
+        val repo = "arrow"
 
-        sut.stargazers.observeForever(observer)
+        whenever(service.getStargazersAsync(eq(owner), eq(repo), any()))
+            .doReturn(
+                CompletableDeferred(
+                    Response.success(
+                        results,
+                        Headers.Builder()
+                            .add("Link", "\"http://next.url\";rel=\"next\"")
+                            .build()
+                    )
+                )
+            )
 
-        sut.getStargazers("al333z", "arrow")
+        sut.stargazers.observeForever(stargazersObserver)
+        sut.networkState.observeForever(networkStateObserver)
 
-        verify(observer).onChanged(ResourceStatus.Loading)
-        verify(observer).onChanged(ResourceStatus.Success(results))
+        sut.search(owner, repo)
+
+        verify(networkStateObserver).onChanged(NetworkState.Loading)
+        // ...
+        verify(networkStateObserver).onChanged(NetworkState.Loaded)
     }
 
     @Test
     fun error() {
-        val err = Response.error<List<Stargazer>>(
-            500,
-            ResponseBody.create(MediaType.parse("application/json"), "Unavailable")
-        )
+        val owner = "al333z"
+        val repo = "arrow"
+        whenever(service.getStargazersAsync(eq(owner), eq(repo), any()))
+            .doReturn(
+                CompletableDeferred(
+                    Response.error(
+                        500,
+                        ResponseBody.create(MediaType.parse("application/json"), "Unavailable")
+                    )
+                )
+            )
 
-        whenever(service.getStargazersAsync(any(), any()))
-            .doReturn(CompletableDeferred(err))
+        sut.stargazers.observeForever(stargazersObserver)
+        sut.networkState.observeForever(networkStateObserver)
 
-        sut.stargazers.observeForever(observer)
+        sut.search(owner, repo)
 
-        sut.getStargazers("al333z", "arrow")
-
-        verify(observer).onChanged(ResourceStatus.Loading)
-        verify(observer).onChanged(isA<ResourceStatus.Error>())
+        verify(networkStateObserver).onChanged(NetworkState.Loading)
+        // ...
+        verify(networkStateObserver).onChanged(isA<NetworkState.Failed>())
     }
+
 }

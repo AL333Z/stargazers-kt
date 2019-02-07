@@ -45,7 +45,6 @@ class StargazersPagedDataSource(
     ) {
         coroutineScope.launch(coroutineScope.coroutineContext) {
             networkState.postValue(NetworkState.Loading)
-
             val response = asyncCall().await()
 
             if (response.isSuccessful){
