@@ -7,6 +7,7 @@ import com.al333z.stargazers.service.NetworkState
 import com.al333z.stargazers.service.Stargazer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import retrofit2.Response
 
@@ -43,22 +44,28 @@ class StargazersPagedDataSource(
         asyncCall: () -> Deferred<Response<List<Stargazer>>>,
         callback: (List<Stargazer>, String?) -> Unit
     ) {
-        coroutineScope.launch(coroutineScope.coroutineContext) {
+        coroutineScope.launch(Dispatchers.Main) {
             networkState.postValue(NetworkState.Loading)
-            val response = asyncCall().await()
 
-            if (response.isSuccessful){
-                val values = response.body() ?: emptyList()
-                networkState.postValue(NetworkState.Loaded)
+            try {
+                val response = asyncCall().await()
 
-                val linkHeader = response.headers()["Link"]
-                val links = linkHeader?.split(",")
-                val next = links?.firstOrNull { it.endsWith("rel=\"next\"") }
-                val nextUrl = next?.split(";")?.getOrNull(0)?.trim()?.drop(1)?.dropLast(1)
+                if (response.isSuccessful) {
+                    val values = response.body() ?: emptyList()
+                    networkState.postValue(NetworkState.Loaded)
 
-                callback(values, nextUrl)
-            } else {
-                networkState.postValue(NetworkState.Failed(response.message()))
+                    val linkHeader = response.headers()["Link"]
+                    val links = linkHeader?.split(",")
+                    val next = links?.firstOrNull { it.endsWith("rel=\"next\"") }
+                    val nextUrl = next?.split(";")?.getOrNull(0)?.trim()?.drop(1)?.dropLast(1)
+
+                    callback(values, nextUrl)
+                } else {
+                    networkState.postValue(NetworkState.Failed(response.message()))
+                }
+            } catch (t: Throwable) {
+                t.printStackTrace()
+                networkState.postValue(NetworkState.Failed(t.localizedMessage))
             }
         }
     }

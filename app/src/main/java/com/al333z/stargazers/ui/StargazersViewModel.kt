@@ -13,7 +13,8 @@ import javax.inject.Inject
 class StargazersViewModel @Inject constructor(gitHubService: GitHubService) : ScopedViewModel() {
 
     private val pagedListConfig = PagedList.Config.Builder()
-        .setPageSize(2)
+        .setPageSize(5)
+        .setInitialLoadSizeHint(10)
         .setEnablePlaceholders(false)
         .build()
 

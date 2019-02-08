@@ -6,10 +6,11 @@ import androidx.paging.DataSource
 import com.al333z.stargazers.service.GitHubService
 import com.al333z.stargazers.service.Stargazer
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class StargazersPagedDataSourceFactory(
-    private val scope: CoroutineScope,
+    private val coroutineScope: CoroutineScope,
     private val gitHubService: GitHubService
 ) : DataSource.Factory<String, Stargazer>() {
 
@@ -20,8 +21,9 @@ class StargazersPagedDataSourceFactory(
     val dataSources: LiveData<StargazersPagedDataSource> = _dataSources
 
     override fun create(): DataSource<String, Stargazer> {
-        val ds = StargazersPagedDataSource(owner, repo, gitHubService, scope)
-        scope.launch {
+        val ds = StargazersPagedDataSource(owner, repo, gitHubService, coroutineScope)
+
+        coroutineScope.launch(Dispatchers.Main) {
             _dataSources.value = ds
         }
         return ds
