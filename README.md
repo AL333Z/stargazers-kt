@@ -1,5 +1,4 @@
-# Stargazers
-
+# Stargazers [![Build Status](https://travis-ci.org/AL333Z/stargazers-kt.svg?branch=master)](https://travis-ci.org/AL333Z/stargazers-kt)
 Sample application for [Stargazers GitHub api](https://developer.github.com/v3/activity/starring/#list-stargazers)
 
 ## CLI
